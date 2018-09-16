@@ -43,9 +43,11 @@ namespace ReminderSystem
                             counter++;
                             Console.WriteLine(reader[0] + " - " + reader[1] + " " + reader[2] + " " + reader[3] + " " + reader[4]);
                             
+                            // SQL Query update state from 0 -> 1
                             Console.WriteLine("Email sent to: " + reader[1]);
                             
                             Console.WriteLine(reader[0] + " - " + reader[1] + " " + reader[2] + " " + reader[3] + " " + reader[4] + "\n");
+                            // SQL Query update state from 1 -> 2
                         }
 
                     }
