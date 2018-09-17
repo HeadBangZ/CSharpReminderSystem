@@ -16,59 +16,68 @@ namespace ReminderSystem
     {
         static void Main(string[] args)
         {
-            int counter = 0;
-            SqlConnection conn = new SqlConnection(@"data source = DESKTOP-DJ7RAJ3; integrated security = true; database = emailReminderSystemDB");
-            SqlCommand cmd = null;
-            SqlDataReader reader = null;
-            string s0s2 = "select * from clientAppointment where state = 0 and '" + DateTime.Now.AddDays(3).ToString("yyyy/MM/dd") + "' > appointmentTime";
-            bool reminderSystem = true;
-
-            while(reminderSystem)
+            while (true)
             {
-                string s0s1 = "update clientAppointment set state = 1 where state = 0";
-                string s1s2 = "update clientAppointment set state = 2 where state = 1";
-            //    string s2s4 = "select * from clientAppointment where state = 0 and '" + DateTime.Now.AddDays(1).ToString("yyyy/MM/dd") + "' > appointmentTime";
-            //    string s2s3 = "update clientAppointment set state = 3 where state = 2";
-            //    string s3s4 = "update clientAppointment set state = 4 where state = 3";
-                try
-                {
-                    conn.Open();
-                    cmd = new SqlCommand(s0s2, conn);
-                    reader = cmd.ExecuteReader();
-                    
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            counter++;
-                            Console.WriteLine(reader[0] + " - " + reader[1] + " " + reader[2] + " " + reader[3] + " " + reader[4]);
-                            
-                            // SQL Query update state from 0 -> 1
-                            Console.WriteLine("Email sent to: " + reader[1]);
-                            
-                            Console.WriteLine(reader[0] + " - " + reader[1] + " " + reader[2] + " " + reader[3] + " " + reader[4] + "\n");
-                            // SQL Query update state from 1 -> 2
-                        }
-
-                    }
-                }
-                catch (Exception err)
-                {
-                    Console.WriteLine(err.Message);
-                }
-                finally
-                {
-                    conn.Close();
-                }
-
-                Console.WriteLine("====================================");
-                Console.WriteLine("Number of clients :" + counter);
-                Console.WriteLine("====================================");
-
-                counter = 0;
-
+                SqlConnection conn = new SqlConnection(@"data source = DESKTOP-DJ7RAJ3; integrated security = true; database = emailReminderSystemDB; MultipleActiveResultSets = True");
+                CheckRemindersS0S2(conn);
                 Thread.Sleep(5000);
             }
+        }
+
+        static void CheckRemindersS0S2(SqlConnection connection)
+        {
+            using (connection)
+            {
+                string s0s2 = "select * from clientReminderSystemTable where state = 0 and '" + DateTime.Now.AddDays(3).ToString("yyyy/MM/dd") + "' >= appointmentTime";
+                SqlCommand command = new SqlCommand(s0s2, connection);
+                connection.Open();
+
+                SqlDataReader reader = command.ExecuteReader();
+
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        int id = reader.GetInt32(reader.GetOrdinal("ID"));
+
+                        int affectedRows = UpdateState(connection, id, 0, 1);
+
+                        if (affectedRows > 0) // only execute if instance was allowed to update to state 1
+                        {
+                            SendMail(reader["EMAIL"].ToString(), "Remember the appointment");
+                            UpdateState(connection, id, 1, 2);
+                        }
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("No valid s0s2 transitions found.");
+                }
+                reader.Close();
+            }
+        }
+
+        static int UpdateState(SqlConnection connection, int id, int stateOld, int stateNew)
+        {
+            Console.Write("Updating state for id:"+id+" "+stateOld+"->"+stateNew);
+            // SQL Query update state
+            using (var updCmds0s1 = new SqlCommand("update clientReminderSystemTable set state = "+stateNew+" where state = "+stateOld+" and id =" + id, connection))
+            {
+                int affectedRows = updCmds0s1.ExecuteNonQuery();
+                Console.WriteLine(" (Affected rows:" + affectedRows+")");
+
+                return affectedRows;
+            }
+        }
+
+        static void SendMail(string email, string message)
+        {
+            Console.WriteLine("Send email to:" + email + " : " + message);
+        }
+
+        static void SendSMS(string msisdn, string message)
+        {
+            Console.WriteLine("Send SMS to:" + msisdn + " : " + message);
         }
     }
 }
